@@ -25,8 +25,8 @@ pub type ChainSpec = sc_service::GenericChainSpec<()>;
 
 fn props() -> Properties {
 	let mut properties = Properties::new();
-	properties.insert("tokenDecimals".to_string(), 0.into());
-	properties.insert("tokenSymbol".to_string(), "MINI".into());
+	properties.insert("tokenDecimals".to_string(), 3.into());
+	properties.insert("tokenSymbol".to_string(), "OPM".into());
 	properties
 }
 
@@ -44,7 +44,7 @@ pub fn development_config() -> Result<ChainSpec, String> {
 fn testnet_genesis() -> Value {
 	use frame::traits::Get;
 	use runtime::interface::{Balance, MinimumBalance};
-	let endowment = <MinimumBalance as Get<Balance>>::get().max(1) * 1000;
+	let endowment = <MinimumBalance as Get<Balance>>::get().max(1) * 1_000_000;
 	let balances = AccountKeyring::iter()
 		.map(|a| (a.to_account_id(), endowment))
 		.collect::<Vec<_>>();
