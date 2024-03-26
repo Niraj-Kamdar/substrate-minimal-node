@@ -29,11 +29,23 @@ pallet-timestamp = { git = "https://github.com/paritytech/polkadot-sdk", branch 
 pallet-transaction-payment = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.9.0", default-features = false }
 pallet-transaction-payment-rpc-runtime-api = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.9.0", default-features = false }
 
+# substrate frames
+frame-support = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.9.0", default-features = false }
+
+## substrate primitives
+sp-core = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.9.0", default-features = false }
+sp-runtime = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.9.0", default-features = false }
 # genesis builder that allows us to interacto with runtime genesis config
 sp-genesis-builder = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.9.0", default-features = false }
 
 # local pallet templates
 pallet-minimal-template =  { path = "../pallets/template", default-features = false }
+
+# EVM support
+fp-account = { git = "https://github.com/polkadot-evm/frontier.git", branch = "polkadot-v1.9.0", default-features = false }
+fp-evm = { git = "https://github.com/polkadot-evm/frontier.git", branch = "polkadot-v1.9.0", default-features = false }
+pallet-evm = { git = "https://github.com/polkadot-evm/frontier.git", branch = "polkadot-v1.9.0", default-features = false }
+pallet-ethereum = { git = "https://github.com/polkadot-evm/frontier.git", branch = "polkadot-v1.9.0", default-features = false }
 
 [build-dependencies]
 substrate-wasm-builder = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.9.0", default-features = false, optional = true}
@@ -44,7 +56,12 @@ std = [
 	"parity-scale-codec/std",
 	"scale-info/std",
 
+	"sp-core/std",
+	"sp-runtime/std",
+
 	"frame/std",
+
+	"frame-support/std",
 
 	"pallet-balances/std",
 	"pallet-sudo/std",
@@ -56,4 +73,10 @@ std = [
 
 	"sp-genesis-builder/std",
 	"substrate-wasm-builder",
+
+	"fp-account/std",
+	"fp-evm/std",
+
+	"pallet-ethereum/std",
+	"pallet-evm/std",
 ]

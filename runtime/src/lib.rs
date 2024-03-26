@@ -36,6 +36,45 @@ use frame::{
 	},
 };
 
+use sp_core::{
+	crypto::{ByteArray, KeyTypeId},
+	H160, H256, U256,
+};
+use sp_runtime::{
+	traits::{
+		IdentifyAccount,
+		Verify
+	},
+	Perbill
+};
+use frame_support::{
+	weights::{
+		constants::WEIGHT_REF_TIME_PER_MILLIS,
+	}
+};
+
+use fp_account::EthereumSignature;
+use fp_evm::weight_per_gas;
+use pallet_evm::{
+	Account as EVMAccount, EnsureAccountId20, FeeCalculator, IdentityAddressMapping, Runner,
+};
+
+mod precompiles;
+use precompiles::FrontierPrecompiles;
+
+const NORMAL_DISPATCH_RATIO: Perbill = Perbill::from_percent(75);
+/// We allow for 2000ms of compute with a 6 second average block time.
+pub const WEIGHT_MILLISECS_PER_BLOCK: u64 = 2000;
+pub const MAXIMUM_BLOCK_WEIGHT: Weight = Weight::from_parts(
+	WEIGHT_MILLISECS_PER_BLOCK * WEIGHT_REF_TIME_PER_MILLIS,
+	u64::MAX,
+);
+pub const MAXIMUM_BLOCK_LENGTH: u32 = 5 * 1024 * 1024;
+
+
+const BLOCK_GAS_LIMIT: u64 = 75_000_000;
+const MAX_POV_SIZE: u64 = 5 * 1024 * 1024;
+
 #[runtime_version]
 pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("minimal-template-runtime"),
@@ -53,6 +92,13 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 pub fn native_version() -> NativeVersion {
 	NativeVersion { runtime_version: VERSION, can_author_with: Default::default() }
 }
+
+/// Alias to 512-bit hash when used in the context of a transaction signature on the chain.
+pub type Signature = EthereumSignature;
+
+/// Some way of identifying an account on the chain. We intentionally make it equivalent
+/// to the public key of our transaction signing scheme.
+pub type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
 
 type SignedExtra = (
 	frame_system::CheckNonZeroSender<Runtime>,
@@ -73,6 +119,10 @@ construct_runtime!(
 		Balances: pallet_balances,
 		Sudo: pallet_sudo,
 		TransactionPayment: pallet_transaction_payment,
+
+		// EVM
+		EVM: pallet_evm,
+		Ethereum: pallet_ethereum,
 
 		// our local pallet
 		Template: pallet_minimal_template,
@@ -118,6 +168,87 @@ type RuntimeExecutive =
 	Executive<Runtime, Block, frame_system::ChainContext<Runtime>, Runtime, AllPalletsWithSystem>;
 
 use pallet_transaction_payment::{FeeDetails, RuntimeDispatchInfo};
+
+parameter_types! {
+	pub BlockGasLimit: U256 = U256::from(BLOCK_GAS_LIMIT);
+	pub const GasLimitPovSizeRatio: u64 = BLOCK_GAS_LIMIT.saturating_div(MAX_POV_SIZE);
+	pub PrecompilesValue: FrontierPrecompiles<Runtime> = FrontierPrecompiles::<_>::new();
+	pub WeightPerGas: Weight = Weight::from_parts(weight_per_gas(BLOCK_GAS_LIMIT, NORMAL_DISPATCH_RATIO, WEIGHT_MILLISECS_PER_BLOCK), 0);
+	pub SuicideQuickClearLimit: u32 = 0;
+}
+
+// EVM Support
+impl pallet_evm::Config for Runtime {
+		/// Calculator for current gas price.
+		type FeeCalculator = ();
+
+		/// Maps Ethereum gas to Substrate weight.
+		type GasWeightMapping = pallet_evm::FixedGasWeightMapping<Self>;
+
+		/// Weight corresponding to a gas unit.
+		type WeightPerGas = WeightPerGas;
+
+		/// Block number to block hash.
+		type BlockHashMapping = pallet_ethereum::EthereumBlockHashMapping<Self>;
+
+		/// Allow the origin to call on behalf of given address.
+		type CallOrigin = EnsureAccountId20;
+		/// Allow the origin to withdraw on behalf of given address.
+		type WithdrawOrigin = EnsureAccountId20;
+
+		/// Mapping from address to account id.
+		type AddressMapping = IdentityAddressMapping;
+		/// Currency type for withdraw and balance storage.
+		type Currency = Balances;
+
+		/// The overarching event type.
+		type RuntimeEvent = RuntimeEvent;
+		/// Precompiles associated with this EVM engine.
+		type PrecompilesType = FrontierPrecompiles<Self>;
+		type PrecompilesValue = PrecompilesValue;
+		/// Chain ID of EVM.
+		type ChainId = ();
+		/// The block gas limit. Can be a simple constant, or an adjustment algorithm in another pallet.
+		type BlockGasLimit = BlockGasLimit;
+		/// EVM execution runner.
+		type Runner = pallet_evm::runner::stack::Runner<Self>;
+
+		/// To handle fee deduction for EVM transactions. An example is this pallet being used by `pallet_ethereum`
+		/// where the chain implementing `pallet_ethereum` should be able to configure what happens to the fees
+		/// Similar to `OnChargeTransaction` of `pallet_transaction_payment`
+		type OnChargeTransaction = ();
+
+		/// Called on create calls, used to record owner
+		type OnCreate = ();
+
+		/// Find author for the current block.
+		type FindAuthor = ();
+
+		/// Gas limit Pov size ratio.
+		type GasLimitPovSizeRatio = GasLimitPovSizeRatio;
+
+		/// Define the quick clear limit of storage clearing when a contract suicides. Set to 0 to disable it.
+		type SuicideQuickClearLimit = SuicideQuickClearLimit;
+
+		/// Get the timestamp for the current block.
+		type Timestamp = Timestamp;
+
+		/// Weight information for extrinsics in this pallet.
+		type WeightInfo = pallet_evm::weights::SubstrateWeight<Self>;
+}
+
+
+
+parameter_types! {
+	pub const PostBlockAndTxnHashes: PostLogContent = PostLogContent::BlockAndTxnHashes;
+}
+
+impl pallet_ethereum::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type StateRoot = pallet_ethereum::IntermediateStateRoot<Self>;
+	type PostLogContent = PostBlockAndTxnHashes;
+	type ExtraDataLength = ConstU32<30>;
+}
 
 impl_runtime_apis! {
 	impl apis::Core<Block> for Runtime {
