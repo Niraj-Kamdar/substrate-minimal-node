@@ -33,6 +33,7 @@ pallet-transaction-payment-rpc-runtime-api = { git = "https://github.com/parityt
 frame-support = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.9.0", default-features = false }
 
 ## substrate primitives
+sp-std = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.9.0", default-features = false }
 sp-core = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.9.0", default-features = false }
 sp-runtime = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.9.0", default-features = false }
 # genesis builder that allows us to interacto with runtime genesis config
@@ -56,6 +57,7 @@ std = [
 	"parity-scale-codec/std",
 	"scale-info/std",
 
+	"sp-std/std",
 	"sp-core/std",
 	"sp-runtime/std",
 
