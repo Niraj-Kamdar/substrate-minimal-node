@@ -4174,7 +4174,9 @@ dependencies = [
  "pallet-transaction-payment-rpc-runtime-api",
  "parity-scale-codec",
  "scale-info",
+ "sp-core",
  "sp-genesis-builder",
+ "sp-runtime",
  "substrate-wasm-builder",
 ]
 
