@@ -25,6 +25,7 @@ use frame::{
 	deps::frame_support::{
 		genesis_builder_helper::{build_config, create_default_config},
 		weights::{FixedFee, NoFee},
+		traits::Everything,
 	},
 	prelude::*,
 	runtime::{
@@ -47,22 +48,6 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	transaction_version: 1,
 	state_version: 1,
 };
-
-pub use sp_runtime::OpaqueExtrinsic as UncheckedExtrinsic;
-pub use sp_runtime::traits::BlakeTwo256;
-
-pub type BlockNumber = u32;
-/// The address format for describing accounts.
-// pub type Address = AccountId;
-/// Block header type as expected by this runtime.
-pub type Header = sp_runtime::generic::Header<BlockNumber, BlakeTwo256>;
-/// Block type as expected by this runtime.
-pub type Block = sp_runtime::generic::Block<Header, UncheckedExtrinsic>;
-/// A Block signed with a Justification
-// pub type SignedBlock = generic::SignedBlock<Block>;
-/// BlockId type as expected by this runtime.
-// pub type BlockId = generic::BlockId<Block>;
-/// The SignedExtension to the basic transaction logic.
 
 /// The version information used to identify this runtime when compiled natively.
 #[cfg(feature = "std")]
@@ -99,59 +84,86 @@ parameter_types! {
 	pub const Version: RuntimeVersion = VERSION;
 }
 
+/// Balance of an account.
+pub type Balance = u64;
+
 impl frame_system::Config for Runtime {
-	type Block = Block;
-	type Version = Version;
-	type BlockHashCount = ConstU32<1024>;
-	type AccountData = pallet_balances::AccountData<<Runtime as pallet_balances::Config>::Balance>;
+	/// The default type for storing how many extrinsics an account has signed.
 	type Nonce = u32;
+
+	type Block = Block;
+
+	/// The default type for hashing blocks and tries.
 	type Hash = sp_core::hash::H256;
+
+	/// The default hashing algorithm used.
 	type Hashing = sp_runtime::traits::BlakeTwo256;
+
+	/// The default identifier used to distinguish between accounts.
 	type AccountId = sp_runtime::AccountId32;
-  type Lookup = sp_runtime::traits::AccountIdLookup<Self::AccountId, ()>;
-  type MaxConsumers = frame_support::traits::ConstU32<128>;
-  type AccountData = frame_system::AccountInfo<Self::Nonce, ()>;
-  type OnNewAccount = ();
-  type OnKilledAccount = ();
-  type SystemWeightInfo = ();
-  type SS58Prefix = ();
-  type BlockWeights = ();
-  type BlockLength = ();
-  type DbWeight = ();
 
-  #[inject_runtime_type]
-  type RuntimeEvent = ();
+	/// The lookup mechanism to get account ID from whatever is passed in dispatchers.
+	type Lookup = sp_runtime::traits::AccountIdLookup<Self::AccountId, ()>;
 
-  #[inject_runtime_type]
-  type RuntimeOrigin = ();
+	/// The maximum number of consumers allowed on a single account. Using 128 as default.
+	type MaxConsumers = ConstU32<128>;
 
-  /// The aggregated dispatch type available for extrinsics, injected by
-  /// `construct_runtime!`.
-  #[inject_runtime_type]
-  type RuntimeCall = ();
+	/// The default data to be stored in an account.
+	type AccountData = pallet_balances::AccountData<Balance>;
 
-  /// The aggregated Task type, injected by `construct_runtime!`.
-  #[inject_runtime_type]
-  type RuntimeTask = ();
+	/// What to do if a new account is created.
+	type OnNewAccount = ();
 
-  /// Converts a module to the index of the module, injected by `construct_runtime!`.
-  #[inject_runtime_type]
-  type PalletInfo = ();
+	/// What to do if an account is fully reaped from the system.
+	type OnKilledAccount = ();
 
-  /// The basic call filter to use in dispatchable. Supports everything as the default.
-  type BaseCallFilter = frame_support::traits::Everything;
+	/// Weight information for the extrinsics of this pallet.
+	type SystemWeightInfo = ();
 
-  /// Maximum number of block number to block hash mappings to keep (oldest pruned first).
-  /// Using 256 as default.
-  type BlockHashCount = frame_support::traits::ConstU32<256>;
+	/// This is used as an identifier of the chain.
+	type SS58Prefix = ();
 
-  /// The set code logic, just the default since we're not a parachain.
-  type OnSetCode = ();
-  type SingleBlockMigrations = ();
-  type MultiBlockMigrator = ();
-  type PreInherents = ();
-  type PostInherents = ();
-  type PostTransactions = ();
+	/// Version of the runtime.
+	type Version = ();
+
+	/// Block & extrinsics weights: base values and limits.
+	type BlockWeights = ();
+
+	/// The maximum length of a block (in bytes).
+	type BlockLength = ();
+
+	/// The weight of database operations that the runtime can invoke.
+	type DbWeight = ();
+
+	type RuntimeEvent = RuntimeEvent;
+
+	/// The ubiquitous origin type injected by `construct_runtime!`.
+	type RuntimeOrigin = RuntimeOrigin;
+
+	/// The aggregated dispatch type available for extrinsics, injected by
+	/// `construct_runtime!`.
+	type RuntimeCall = RuntimeCall;
+
+	/// The aggregated Task type, injected by `construct_runtime!`.
+	type RuntimeTask = RuntimeTask;
+
+	/// Converts a module to the index of the module, injected by `construct_runtime!`.
+	type PalletInfo = PalletInfo;
+
+	/// The basic call filter to use in dispatchable. Supports everything as the default.
+	type BaseCallFilter = Everything;
+
+	/// Maximum number of block number to block hash mappings to keep (oldest pruned first).
+	/// Using 256 as default.
+	type BlockHashCount = ConstU32<256>;
+
+	/// The set code logic, just the default since we're not a parachain.
+	type OnSetCode = ();
+	type SingleBlockMigrations = ();
+	type MultiBlockMigrator = ();
+	type PreInherents = ();
+	type PostInherents = ();
+	type PostTransactions = ();
 }
 
 #[derive_impl(pallet_balances::config_preludes::TestDefaultConfig)]
@@ -174,6 +186,7 @@ impl pallet_transaction_payment::Config for Runtime {
 
 impl pallet_minimal_template::Config for Runtime {}
 
+type Block = frame::runtime::types_common::BlockOf<Runtime, SignedExtra>;
 
 type Header = HeaderFor<Runtime>;
 
