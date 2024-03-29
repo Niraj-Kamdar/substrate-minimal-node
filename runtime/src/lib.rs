@@ -84,9 +84,6 @@ parameter_types! {
 	pub const Version: RuntimeVersion = VERSION;
 }
 
-/// Balance of an account.
-pub type Balance = u64;
-
 impl frame_system::Config for Runtime {
 	/// The default type for storing how many extrinsics an account has signed.
 	type Nonce = u32;
@@ -109,7 +106,7 @@ impl frame_system::Config for Runtime {
 	type MaxConsumers = ConstU32<128>;
 
 	/// The default data to be stored in an account.
-	type AccountData = pallet_balances::AccountData<Balance>;
+	type AccountData = pallet_balances::AccountData<<Runtime as pallet_balances::Config>::Balance>;
 
 	/// What to do if a new account is created.
 	type OnNewAccount = ();
