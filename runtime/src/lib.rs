@@ -37,6 +37,36 @@ use frame::{
 	},
 };
 
+use frame_support::{
+	weights::{constants::WEIGHT_REF_TIME_PER_MILLIS, IdentityFee, Weight},
+};
+
+// Substrate FRAME
+#[cfg(feature = "with-paritydb-weights")]
+use frame_support::weights::constants::ParityDbWeight as RuntimeDbWeight;
+#[cfg(feature = "with-rocksdb-weights")]
+use frame_support::weights::constants::RocksDbWeight as RuntimeDbWeight;
+
+use sp_runtime::generic;
+use sp_runtime::Perbill;
+use sp_runtime::traits::BlakeTwo256;
+
+/// Type of block number.
+pub type BlockNumber = u32;
+
+pub mod opaque {
+	use super::*;
+
+	pub use sp_runtime::OpaqueExtrinsic as UncheckedExtrinsic;
+
+	/// Opaque block header type.
+	pub type Header = generic::Header<BlockNumber, BlakeTwo256>;
+	/// Opaque block type.
+	pub type Block = generic::Block<Header, UncheckedExtrinsic>;
+	/// Opaque block identifier type.
+	pub type BlockId = generic::BlockId<Block>;
+}
+
 #[runtime_version]
 pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("minimal-template-runtime"),
@@ -80,8 +110,22 @@ construct_runtime!(
 	}
 );
 
+const NORMAL_DISPATCH_RATIO: Perbill = Perbill::from_percent(75);
+/// We allow for 2000ms of compute with a 6 second average block time.
+pub const WEIGHT_MILLISECS_PER_BLOCK: u64 = 2000;
+pub const MAXIMUM_BLOCK_WEIGHT: Weight = Weight::from_parts(
+	WEIGHT_MILLISECS_PER_BLOCK * WEIGHT_REF_TIME_PER_MILLIS,
+	u64::MAX,
+);
+pub const MAXIMUM_BLOCK_LENGTH: u32 = 5 * 1024 * 1024;
+
 parameter_types! {
 	pub const Version: RuntimeVersion = VERSION;
+	pub BlockWeights: frame_system::limits::BlockWeights = frame_system::limits::BlockWeights
+	::with_sensible_defaults(MAXIMUM_BLOCK_WEIGHT, NORMAL_DISPATCH_RATIO);
+	pub BlockLength: frame_system::limits::BlockLength = frame_system::limits::BlockLength
+	::max_with_normal_ratio(MAXIMUM_BLOCK_LENGTH, NORMAL_DISPATCH_RATIO);
+	pub const SS58Prefix: u8 = 42;
 }
 
 impl frame_system::Config for Runtime {
@@ -118,19 +162,19 @@ impl frame_system::Config for Runtime {
 	type SystemWeightInfo = ();
 
 	/// This is used as an identifier of the chain.
-	type SS58Prefix = ();
+	type SS58Prefix = SS58Prefix;
 
 	/// Version of the runtime.
-	type Version = ();
+	type Version = Version;
 
 	/// Block & extrinsics weights: base values and limits.
-	type BlockWeights = ();
+	type BlockWeights = BlockWeights;
 
 	/// The maximum length of a block (in bytes).
-	type BlockLength = ();
+	type BlockLength = BlockLength;
 
 	/// The weight of database operations that the runtime can invoke.
-	type DbWeight = ();
+	type DbWeight = RuntimeDbWeight;
 
 	type RuntimeEvent = RuntimeEvent;
 

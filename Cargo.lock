@@ -4166,6 +4166,8 @@ name = "minimal-template-runtime"
 version = "0.0.0"
 dependencies = [
  "frame",
+ "frame-support",
+ "frame-system",
  "pallet-balances",
  "pallet-minimal-template",
  "pallet-sudo",
