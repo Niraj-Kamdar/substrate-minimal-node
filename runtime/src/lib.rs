@@ -24,8 +24,8 @@ include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 use frame::{
 	deps::frame_support::{
 		genesis_builder_helper::{build_config, create_default_config},
-		weights::{FixedFee, NoFee},
 		traits::Everything,
+		weights::{FixedFee, NoFee},
 	},
 	prelude::*,
 	runtime::{
@@ -37,9 +37,7 @@ use frame::{
 	},
 };
 
-use frame_support::{
-	weights::{constants::WEIGHT_REF_TIME_PER_MILLIS, IdentityFee, Weight},
-};
+use frame_support::weights::{constants::WEIGHT_REF_TIME_PER_MILLIS, IdentityFee, Weight};
 
 // Substrate FRAME
 #[cfg(feature = "with-paritydb-weights")]
@@ -47,9 +45,7 @@ use frame_support::weights::constants::ParityDbWeight as RuntimeDbWeight;
 #[cfg(feature = "with-rocksdb-weights")]
 use frame_support::weights::constants::RocksDbWeight as RuntimeDbWeight;
 
-use sp_runtime::generic;
-use sp_runtime::Perbill;
-use sp_runtime::traits::BlakeTwo256;
+use sp_runtime::{generic, traits::BlakeTwo256, Perbill};
 
 /// Type of block number.
 pub type BlockNumber = u32;
@@ -113,10 +109,8 @@ construct_runtime!(
 const NORMAL_DISPATCH_RATIO: Perbill = Perbill::from_percent(75);
 /// We allow for 2000ms of compute with a 6 second average block time.
 pub const WEIGHT_MILLISECS_PER_BLOCK: u64 = 2000;
-pub const MAXIMUM_BLOCK_WEIGHT: Weight = Weight::from_parts(
-	WEIGHT_MILLISECS_PER_BLOCK * WEIGHT_REF_TIME_PER_MILLIS,
-	u64::MAX,
-);
+pub const MAXIMUM_BLOCK_WEIGHT: Weight =
+	Weight::from_parts(WEIGHT_MILLISECS_PER_BLOCK * WEIGHT_REF_TIME_PER_MILLIS, u64::MAX);
 pub const MAXIMUM_BLOCK_LENGTH: u32 = 5 * 1024 * 1024;
 
 parameter_types! {
@@ -364,4 +358,66 @@ pub mod interface {
 	pub type Hash = <Runtime as frame_system::Config>::Hash;
 	pub type Balance = <Runtime as pallet_balances::Config>::Balance;
 	pub type MinimumBalance = <Runtime as pallet_balances::Config>::ExistentialDeposit;
+}
+
+#[cfg(test)]
+mod tests {
+	use super::{interface, Balances, Runtime, RuntimeOrigin, System};
+	use sp_io;
+	use sp_runtime::BuildStorage;
+
+	use sp_core::{crypto::DEV_PHRASE, sr25519, Pair};
+	use sp_runtime::AccountId32;
+
+	use sp_runtime::MultiAddress::Id;
+
+	fn get_account_id(name: &str) -> AccountId32 {
+		let pair = sr25519::Pair::from_string(&format!("{}//{}", DEV_PHRASE, name), None).unwrap();
+		let pub_key = pair.public();
+		let account_id = interface::AccountId::from(pub_key);
+		account_id
+	}
+
+	// Function to set up the externalities
+	pub fn new_test_ext() -> sp_io::TestExternalities {
+		let mut storage =
+			frame_system::GenesisConfig::<Runtime>::default().build_storage().unwrap();
+
+		// Here you must include the balances in your genesis configuration.
+		pallet_balances::GenesisConfig::<Runtime> {
+			// Assuming Alice's account ID is correct and she should have some balance.
+			balances: vec![(get_account_id("Alice"), 1000), (get_account_id("Bob"), 1000)],
+		}
+		.assimilate_storage(&mut storage)
+		.unwrap();
+
+		sp_io::TestExternalities::from(storage)
+	}
+
+	#[test]
+	fn test_block_number() {
+		new_test_ext().execute_with(|| {
+			assert_eq!(System::block_number(), 0, "Block Number should be 0");
+			System::set_block_number(5);
+			assert_eq!(System::block_number(), 5, "Block Number should be 5");
+		});
+	}
+
+	#[test]
+	fn test_balance_transfer() {
+		let ALICE: AccountId32 = get_account_id(&"Alice");
+		let BOB: AccountId32 = get_account_id(&"Bob");
+		new_test_ext().execute_with(|| {
+			assert_eq!(Balances::usable_balance(ALICE.clone()), 1000);
+			assert_eq!(Balances::usable_balance(BOB.clone()), 1000);
+			let _ = Balances::transfer_keep_alive(
+				RuntimeOrigin::signed(ALICE.clone()),
+				Id(BOB.clone()),
+				10,
+			)
+			.unwrap();
+			assert_eq!(Balances::usable_balance(ALICE.clone()), 990);
+			assert_eq!(Balances::usable_balance(BOB.clone()), 1010);
+		})
+	}
 }
