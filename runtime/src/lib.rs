@@ -38,6 +38,7 @@ use frame::{
 };
 
 use frame_support::weights::{constants::WEIGHT_REF_TIME_PER_MILLIS, Weight};
+use frame_support::traits::AsEnsureOriginWithArg;
 
 // Substrate FRAME
 #[cfg(feature = "with-paritydb-weights")]
@@ -204,32 +205,12 @@ impl frame_system::Config for Runtime {
 	type PostTransactions = ();
 }
 
-pub struct EnsureRootWithArg<T: frame_system::Config> {
-	_marker: PhantomData<T>,
-}
-
-impl<T: frame_system::Config> frame_support::traits::EnsureOriginWithArg<T::RuntimeOrigin, T::AccountId> for EnsureRootWithArg<T> {
-    type Success = T::AccountId;
-
-    fn try_origin(origin: T::RuntimeOrigin, _arg: &T::AccountId) -> Result<Self::Success, T::RuntimeOrigin> {
-        // First, check if the origin is root
-        if let Ok(_) = <EnsureRoot<<T as frame_system::Config>::AccountId> as frame::prelude::EnsureOrigin<T::RuntimeOrigin>>::try_origin(origin.clone()) {
-            // If it is, return some specific account ID as the success type
-            // You need to define what this account ID will be
-            return Ok(_arg.clone());
-        }
-        
-        // If not root, you could check for other conditions or specific accounts
-        // For this example, we're just rejecting if not root
-        Err(origin)
-    }
-}
 
 #[derive_impl(pallet_assets::config_preludes::TestDefaultConfig)]
 impl pallet_assets::Config for Runtime {
   type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
-	type CreateOrigin = EnsureRootWithArg<Runtime>;
+	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<AccountId>>;
 	type ForceOrigin = frame_system::EnsureRoot<AccountId>;
 	type Freezer = ();
 }
@@ -394,7 +375,8 @@ pub mod interface {
 
 #[cfg(test)]
 mod tests {
-	use super::{interface, Balances, Runtime, RuntimeOrigin, System};
+	use super::{interface, Balances, Runtime, RuntimeOrigin, System, Assets};
+	use frame_support::assert_ok;
 	use sp_io;
 	use sp_runtime::BuildStorage;
 
@@ -450,6 +432,27 @@ mod tests {
 			.unwrap();
 			assert_eq!(Balances::usable_balance(ALICE.clone()), 990);
 			assert_eq!(Balances::usable_balance(BOB.clone()), 1010);
+		})
+	}
+
+	#[test]
+	fn test_assets() {
+		let ALICE: AccountId32 = get_account_id(&"Alice");
+		let BOB: AccountId32 = get_account_id(&"Bob");
+		let asset1 = 0;
+		new_test_ext().execute_with(|| {
+			assert_ok!(Assets::create(RuntimeOrigin::signed(ALICE.clone()), asset1, Id(ALICE.clone()), 1));
+			assert_eq!(Assets::total_supply(asset1), 0);
+
+			assert_ok!(Assets::mint(RuntimeOrigin::signed(ALICE.clone()), asset1, Id(ALICE.clone()), 10000));
+			assert_eq!(Assets::total_supply(asset1), 10000);
+			assert_eq!(Assets::balance(asset1, ALICE.clone()), 10000);
+
+			assert_eq!(Assets::balance(asset1, BOB.clone()), 0);
+			assert_ok!(Assets::transfer(RuntimeOrigin::signed(ALICE.clone()), asset1, Id(BOB.clone()), 1000));
+			assert_eq!(Assets::balance(asset1, BOB.clone()), 1000);
+			assert_eq!(Assets::balance(asset1, ALICE.clone()), 9000);
+
 		})
 	}
 }
