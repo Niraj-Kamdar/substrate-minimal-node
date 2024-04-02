@@ -37,7 +37,8 @@ use frame::{
 	},
 };
 
-use frame_support::weights::{constants::WEIGHT_REF_TIME_PER_MILLIS, IdentityFee, Weight};
+use frame_support::weights::{constants::WEIGHT_REF_TIME_PER_MILLIS, Weight};
+use frame_support::traits::AsEnsureOriginWithArg;
 
 // Substrate FRAME
 #[cfg(feature = "with-paritydb-weights")]
@@ -45,7 +46,7 @@ use frame_support::weights::constants::ParityDbWeight as RuntimeDbWeight;
 #[cfg(feature = "with-rocksdb-weights")]
 use frame_support::weights::constants::RocksDbWeight as RuntimeDbWeight;
 
-use sp_runtime::{generic, traits::BlakeTwo256, Perbill};
+use sp_runtime::{generic, traits::BlakeTwo256, Perbill, AccountId32};
 
 /// Type of block number.
 pub type BlockNumber = u32;
@@ -100,6 +101,7 @@ construct_runtime!(
 		Balances: pallet_balances,
 		Sudo: pallet_sudo,
 		TransactionPayment: pallet_transaction_payment,
+		Assets: pallet_assets,
 
 		// our local pallet
 		Template: pallet_minimal_template,
@@ -122,6 +124,8 @@ parameter_types! {
 	pub const SS58Prefix: u8 = 42;
 }
 
+type AccountId = AccountId32;
+
 impl frame_system::Config for Runtime {
 	/// The default type for storing how many extrinsics an account has signed.
 	type Nonce = u32;
@@ -135,7 +139,7 @@ impl frame_system::Config for Runtime {
 	type Hashing = sp_runtime::traits::BlakeTwo256;
 
 	/// The default identifier used to distinguish between accounts.
-	type AccountId = sp_runtime::AccountId32;
+	type AccountId = AccountId;
 
 	/// The lookup mechanism to get account ID from whatever is passed in dispatchers.
 	type Lookup = sp_runtime::traits::AccountIdLookup<Self::AccountId, ()>;
@@ -199,6 +203,16 @@ impl frame_system::Config for Runtime {
 	type PreInherents = ();
 	type PostInherents = ();
 	type PostTransactions = ();
+}
+
+
+#[derive_impl(pallet_assets::config_preludes::TestDefaultConfig)]
+impl pallet_assets::Config for Runtime {
+  type RuntimeEvent = RuntimeEvent;
+	type Currency = Balances;
+	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<AccountId>>;
+	type ForceOrigin = frame_system::EnsureRoot<AccountId>;
+	type Freezer = ();
 }
 
 #[derive_impl(pallet_balances::config_preludes::TestDefaultConfig)]
@@ -349,7 +363,6 @@ impl_runtime_apis! {
 // https://github.com/paritytech/substrate/issues/10579#issuecomment-1600537558
 pub mod interface {
 	use super::Runtime;
-	use frame::deps::frame_system;
 
 	pub type Block = super::Block;
 	pub use frame::runtime::types_common::OpaqueBlock;
@@ -362,7 +375,8 @@ pub mod interface {
 
 #[cfg(test)]
 mod tests {
-	use super::{interface, Balances, Runtime, RuntimeOrigin, System};
+	use super::{interface, Balances, Runtime, RuntimeOrigin, System, Assets};
+	use frame_support::assert_ok;
 	use sp_io;
 	use sp_runtime::BuildStorage;
 
@@ -418,6 +432,27 @@ mod tests {
 			.unwrap();
 			assert_eq!(Balances::usable_balance(ALICE.clone()), 990);
 			assert_eq!(Balances::usable_balance(BOB.clone()), 1010);
+		})
+	}
+
+	#[test]
+	fn test_assets() {
+		let ALICE: AccountId32 = get_account_id(&"Alice");
+		let BOB: AccountId32 = get_account_id(&"Bob");
+		let asset1 = 0;
+		new_test_ext().execute_with(|| {
+			assert_ok!(Assets::create(RuntimeOrigin::signed(ALICE.clone()), asset1, Id(ALICE.clone()), 1));
+			assert_eq!(Assets::total_supply(asset1), 0);
+
+			assert_ok!(Assets::mint(RuntimeOrigin::signed(ALICE.clone()), asset1, Id(ALICE.clone()), 10000));
+			assert_eq!(Assets::total_supply(asset1), 10000);
+			assert_eq!(Assets::balance(asset1, ALICE.clone()), 10000);
+
+			assert_eq!(Assets::balance(asset1, BOB.clone()), 0);
+			assert_ok!(Assets::transfer(RuntimeOrigin::signed(ALICE.clone()), asset1, Id(BOB.clone()), 1000));
+			assert_eq!(Assets::balance(asset1, BOB.clone()), 1000);
+			assert_eq!(Assets::balance(asset1, ALICE.clone()), 9000);
+
 		})
 	}
 }
