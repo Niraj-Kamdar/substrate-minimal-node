@@ -38,6 +38,7 @@ use frame::{
 };
 
 use frame_support::weights::{constants::WEIGHT_REF_TIME_PER_MILLIS, IdentityFee, Weight};
+use sp_std::vec;
 
 // Substrate FRAME
 #[cfg(feature = "with-paritydb-weights")]
@@ -45,7 +46,7 @@ use frame_support::weights::constants::ParityDbWeight as RuntimeDbWeight;
 #[cfg(feature = "with-rocksdb-weights")]
 use frame_support::weights::constants::RocksDbWeight as RuntimeDbWeight;
 
-use sp_runtime::{generic, traits::BlakeTwo256, Perbill};
+use sp_runtime::{generic, traits::BlakeTwo256, Perbill, AccountId32};
 
 /// Type of block number.
 pub type BlockNumber = u32;
@@ -122,6 +123,8 @@ parameter_types! {
 	pub const SS58Prefix: u8 = 42;
 }
 
+type AccountId = AccountId32;
+
 impl frame_system::Config for Runtime {
 	/// The default type for storing how many extrinsics an account has signed.
 	type Nonce = u32;
@@ -135,7 +138,7 @@ impl frame_system::Config for Runtime {
 	type Hashing = sp_runtime::traits::BlakeTwo256;
 
 	/// The default identifier used to distinguish between accounts.
-	type AccountId = sp_runtime::AccountId32;
+	type AccountId = AccountId;
 
 	/// The lookup mechanism to get account ID from whatever is passed in dispatchers.
 	type Lookup = sp_runtime::traits::AccountIdLookup<Self::AccountId, ()>;
@@ -199,6 +202,38 @@ impl frame_system::Config for Runtime {
 	type PreInherents = ();
 	type PostInherents = ();
 	type PostTransactions = ();
+}
+
+
+pub struct EnsureRootWithArg<RuntimeOrigin: frame_system::Config::RuntimeOrigin, AccountId: frame_system::Config::AccountId> {
+	_runtime_origin_marker: PhantomData<RuntimeOrigin>,
+	_account_id_marker: PhantomData<AccountId>,
+}
+
+impl<RuntimeOrigin, AccountId> frame_support::traits::EnsureOriginWithArg<RuntimeOrigin, AccountId> for EnsureRootWithArg<RuntimeOrigin, AccountId> {
+    type Success = AccountId;
+
+    fn try_origin(origin: RuntimeOrigin, _arg: AccountId) -> Result<Self::Success, RuntimeOrigin> {
+        // First, check if the origin is root
+        if let Ok(_) = frame_system::EnsureRoot::<AccountId>::try_origin(origin.clone()) {
+            // If it is, return some specific account ID as the success type
+            // You need to define what this account ID will be
+            return Ok(_arg);
+        }
+        
+        // If not root, you could check for other conditions or specific accounts
+        // For this example, we're just rejecting if not root
+        Err(origin)
+    }
+}
+
+#[derive_impl(pallet_assets::config_preludes::TestDefaultConfig)]
+impl pallet_assets::Config for Runtime {
+  type RuntimeEvent = RuntimeEvent;
+	type Currency = Balances;
+	type CreateOrigin = EnsureRootWithArg<<Self as frame_system::Config>::RuntimeOrigin, <Self as frame_system::Config>::AccountId>;
+	type ForceOrigin = frame_system::EnsureRoot<AccountId>;
+	type Freezer = ();
 }
 
 #[derive_impl(pallet_balances::config_preludes::TestDefaultConfig)]
