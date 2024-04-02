@@ -105,6 +105,7 @@ construct_runtime!(
 
 		// our local pallet
 		Template: pallet_minimal_template,
+		MinStorage: min_pallet_storage,
 	}
 );
 
@@ -205,6 +206,10 @@ impl frame_system::Config for Runtime {
 	type PostTransactions = ();
 }
 
+impl min_pallet_storage::Config for Runtime {
+	type ValueType = u32;
+	type RuntimeEvent = RuntimeEvent;
+}
 
 #[derive_impl(pallet_assets::config_preludes::TestDefaultConfig)]
 impl pallet_assets::Config for Runtime {
@@ -375,7 +380,7 @@ pub mod interface {
 
 #[cfg(test)]
 mod tests {
-	use super::{interface, Balances, Runtime, RuntimeOrigin, System, Assets};
+	use super::{interface, Balances, Runtime, RuntimeOrigin, System, Assets, MinStorage};
 	use frame_support::assert_ok;
 	use sp_io;
 	use sp_runtime::BuildStorage;
@@ -452,7 +457,16 @@ mod tests {
 			assert_ok!(Assets::transfer(RuntimeOrigin::signed(ALICE.clone()), asset1, Id(BOB.clone()), 1000));
 			assert_eq!(Assets::balance(asset1, BOB.clone()), 1000);
 			assert_eq!(Assets::balance(asset1, ALICE.clone()), 9000);
+		})
+	}
 
+	#[test]
+	fn test_storage() {
+		let ALICE: AccountId32 = get_account_id(&"Alice");
+		new_test_ext().execute_with(|| {
+			assert_eq!(MinStorage::get_value(), 0);
+			assert_ok!(MinStorage::set_value(RuntimeOrigin::signed(ALICE.clone()), 100));
+			assert_eq!(MinStorage::get_value(), 100);
 		})
 	}
 }
