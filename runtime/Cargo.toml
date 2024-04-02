@@ -21,6 +21,12 @@ frame = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-
 	"experimental",
 	"runtime",
 ] }
+frame-support = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.9.0", default-features = false }
+frame-system = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.9.0", default-features = false }
+
+## premitivies
+sp-core = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.9.0" , default-features = false }
+sp-runtime = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.9.0" , default-features = false }
 
 # pallets that we want to use
 pallet-balances = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.9.0" , default-features = false }
@@ -39,12 +45,19 @@ pallet-minimal-template =  { path = "../pallets/template", default-features = fa
 substrate-wasm-builder = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.9.0", default-features = false, optional = true}
 
 [features]
-default = ["std"]
+default = ["std", "with-rocksdb-weights"]
+with-rocksdb-weights = []
+with-paritydb-weights = []
 std = [
 	"parity-scale-codec/std",
 	"scale-info/std",
 
 	"frame/std",
+	"frame-support/std",
+	"frame-system/std",
+
+	"sp-core/std",
+	"sp-runtime/std",
 
 	"pallet-balances/std",
 	"pallet-sudo/std",

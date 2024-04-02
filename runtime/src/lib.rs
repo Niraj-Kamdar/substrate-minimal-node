@@ -25,6 +25,7 @@ use frame::{
 	deps::frame_support::{
 		genesis_builder_helper::{build_config, create_default_config},
 		weights::{FixedFee, NoFee},
+		traits::Everything,
 	},
 	prelude::*,
 	runtime::{
@@ -35,6 +36,36 @@ use frame::{
 		prelude::*,
 	},
 };
+
+use frame_support::{
+	weights::{constants::WEIGHT_REF_TIME_PER_MILLIS, IdentityFee, Weight},
+};
+
+// Substrate FRAME
+#[cfg(feature = "with-paritydb-weights")]
+use frame_support::weights::constants::ParityDbWeight as RuntimeDbWeight;
+#[cfg(feature = "with-rocksdb-weights")]
+use frame_support::weights::constants::RocksDbWeight as RuntimeDbWeight;
+
+use sp_runtime::generic;
+use sp_runtime::Perbill;
+use sp_runtime::traits::BlakeTwo256;
+
+/// Type of block number.
+pub type BlockNumber = u32;
+
+pub mod opaque {
+	use super::*;
+
+	pub use sp_runtime::OpaqueExtrinsic as UncheckedExtrinsic;
+
+	/// Opaque block header type.
+	pub type Header = generic::Header<BlockNumber, BlakeTwo256>;
+	/// Opaque block type.
+	pub type Block = generic::Block<Header, UncheckedExtrinsic>;
+	/// Opaque block identifier type.
+	pub type BlockId = generic::BlockId<Block>;
+}
 
 #[runtime_version]
 pub const VERSION: RuntimeVersion = RuntimeVersion {
@@ -79,16 +110,101 @@ construct_runtime!(
 	}
 );
 
+const NORMAL_DISPATCH_RATIO: Perbill = Perbill::from_percent(75);
+/// We allow for 2000ms of compute with a 6 second average block time.
+pub const WEIGHT_MILLISECS_PER_BLOCK: u64 = 2000;
+pub const MAXIMUM_BLOCK_WEIGHT: Weight = Weight::from_parts(
+	WEIGHT_MILLISECS_PER_BLOCK * WEIGHT_REF_TIME_PER_MILLIS,
+	u64::MAX,
+);
+pub const MAXIMUM_BLOCK_LENGTH: u32 = 5 * 1024 * 1024;
+
 parameter_types! {
 	pub const Version: RuntimeVersion = VERSION;
+	pub BlockWeights: frame_system::limits::BlockWeights = frame_system::limits::BlockWeights
+	::with_sensible_defaults(MAXIMUM_BLOCK_WEIGHT, NORMAL_DISPATCH_RATIO);
+	pub BlockLength: frame_system::limits::BlockLength = frame_system::limits::BlockLength
+	::max_with_normal_ratio(MAXIMUM_BLOCK_LENGTH, NORMAL_DISPATCH_RATIO);
+	pub const SS58Prefix: u8 = 42;
 }
 
-#[derive_impl(frame_system::config_preludes::SolochainDefaultConfig)]
 impl frame_system::Config for Runtime {
+	/// The default type for storing how many extrinsics an account has signed.
+	type Nonce = u32;
+
 	type Block = Block;
-	type Version = Version;
-	type BlockHashCount = ConstU32<1024>;
+
+	/// The default type for hashing blocks and tries.
+	type Hash = sp_core::hash::H256;
+
+	/// The default hashing algorithm used.
+	type Hashing = sp_runtime::traits::BlakeTwo256;
+
+	/// The default identifier used to distinguish between accounts.
+	type AccountId = sp_runtime::AccountId32;
+
+	/// The lookup mechanism to get account ID from whatever is passed in dispatchers.
+	type Lookup = sp_runtime::traits::AccountIdLookup<Self::AccountId, ()>;
+
+	/// The maximum number of consumers allowed on a single account. Using 128 as default.
+	type MaxConsumers = ConstU32<128>;
+
+	/// The default data to be stored in an account.
 	type AccountData = pallet_balances::AccountData<<Runtime as pallet_balances::Config>::Balance>;
+
+	/// What to do if a new account is created.
+	type OnNewAccount = ();
+
+	/// What to do if an account is fully reaped from the system.
+	type OnKilledAccount = ();
+
+	/// Weight information for the extrinsics of this pallet.
+	type SystemWeightInfo = ();
+
+	/// This is used as an identifier of the chain.
+	type SS58Prefix = SS58Prefix;
+
+	/// Version of the runtime.
+	type Version = Version;
+
+	/// Block & extrinsics weights: base values and limits.
+	type BlockWeights = BlockWeights;
+
+	/// The maximum length of a block (in bytes).
+	type BlockLength = BlockLength;
+
+	/// The weight of database operations that the runtime can invoke.
+	type DbWeight = RuntimeDbWeight;
+
+	type RuntimeEvent = RuntimeEvent;
+
+	/// The ubiquitous origin type injected by `construct_runtime!`.
+	type RuntimeOrigin = RuntimeOrigin;
+
+	/// The aggregated dispatch type available for extrinsics, injected by
+	/// `construct_runtime!`.
+	type RuntimeCall = RuntimeCall;
+
+	/// The aggregated Task type, injected by `construct_runtime!`.
+	type RuntimeTask = RuntimeTask;
+
+	/// Converts a module to the index of the module, injected by `construct_runtime!`.
+	type PalletInfo = PalletInfo;
+
+	/// The basic call filter to use in dispatchable. Supports everything as the default.
+	type BaseCallFilter = Everything;
+
+	/// Maximum number of block number to block hash mappings to keep (oldest pruned first).
+	/// Using 256 as default.
+	type BlockHashCount = ConstU32<256>;
+
+	/// The set code logic, just the default since we're not a parachain.
+	type OnSetCode = ();
+	type SingleBlockMigrations = ();
+	type MultiBlockMigrator = ();
+	type PreInherents = ();
+	type PostInherents = ();
+	type PostTransactions = ();
 }
 
 #[derive_impl(pallet_balances::config_preludes::TestDefaultConfig)]
@@ -112,6 +228,7 @@ impl pallet_transaction_payment::Config for Runtime {
 impl pallet_minimal_template::Config for Runtime {}
 
 type Block = frame::runtime::types_common::BlockOf<Runtime, SignedExtra>;
+
 type Header = HeaderFor<Runtime>;
 
 type RuntimeExecutive =

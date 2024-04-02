@@ -4166,6 +4166,8 @@ name = "minimal-template-runtime"
 version = "0.0.0"
 dependencies = [
  "frame",
+ "frame-support",
+ "frame-system",
  "pallet-balances",
  "pallet-minimal-template",
  "pallet-sudo",
@@ -4174,7 +4176,9 @@ dependencies = [
  "pallet-transaction-payment-rpc-runtime-api",
  "parity-scale-codec",
  "scale-info",
+ "sp-core",
  "sp-genesis-builder",
+ "sp-runtime",
  "substrate-wasm-builder",
 ]
 
