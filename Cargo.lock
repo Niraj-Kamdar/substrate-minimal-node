@@ -4627,6 +4627,7 @@ name = "pallet-assets"
 version = "29.0.0"
 source = "git+https://github.com/paritytech/polkadot-sdk?branch=release-polkadot-v1.9.0#3c3d6fceb82372a3019b37117aa453d564b212de"
 dependencies = [
+ "frame-benchmarking",
  "frame-support",
  "frame-system",
  "log",

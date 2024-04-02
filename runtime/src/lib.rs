@@ -37,8 +37,7 @@ use frame::{
 	},
 };
 
-use frame_support::weights::{constants::WEIGHT_REF_TIME_PER_MILLIS, IdentityFee, Weight};
-use sp_std::vec;
+use frame_support::weights::{constants::WEIGHT_REF_TIME_PER_MILLIS, Weight};
 
 // Substrate FRAME
 #[cfg(feature = "with-paritydb-weights")]
@@ -101,6 +100,7 @@ construct_runtime!(
 		Balances: pallet_balances,
 		Sudo: pallet_sudo,
 		TransactionPayment: pallet_transaction_payment,
+		Assets: pallet_assets,
 
 		// our local pallet
 		Template: pallet_minimal_template,
@@ -204,21 +204,19 @@ impl frame_system::Config for Runtime {
 	type PostTransactions = ();
 }
 
-
-pub struct EnsureRootWithArg<RuntimeOrigin: frame_system::Config::RuntimeOrigin, AccountId: frame_system::Config::AccountId> {
-	_runtime_origin_marker: PhantomData<RuntimeOrigin>,
-	_account_id_marker: PhantomData<AccountId>,
+pub struct EnsureRootWithArg<T: frame_system::Config> {
+	_marker: PhantomData<T>,
 }
 
-impl<RuntimeOrigin, AccountId> frame_support::traits::EnsureOriginWithArg<RuntimeOrigin, AccountId> for EnsureRootWithArg<RuntimeOrigin, AccountId> {
-    type Success = AccountId;
+impl<T: frame_system::Config> frame_support::traits::EnsureOriginWithArg<T::RuntimeOrigin, T::AccountId> for EnsureRootWithArg<T> {
+    type Success = T::AccountId;
 
-    fn try_origin(origin: RuntimeOrigin, _arg: AccountId) -> Result<Self::Success, RuntimeOrigin> {
+    fn try_origin(origin: T::RuntimeOrigin, _arg: &T::AccountId) -> Result<Self::Success, T::RuntimeOrigin> {
         // First, check if the origin is root
-        if let Ok(_) = frame_system::EnsureRoot::<AccountId>::try_origin(origin.clone()) {
+        if let Ok(_) = <EnsureRoot<<T as frame_system::Config>::AccountId> as frame::prelude::EnsureOrigin<T::RuntimeOrigin>>::try_origin(origin.clone()) {
             // If it is, return some specific account ID as the success type
             // You need to define what this account ID will be
-            return Ok(_arg);
+            return Ok(_arg.clone());
         }
         
         // If not root, you could check for other conditions or specific accounts
@@ -231,7 +229,7 @@ impl<RuntimeOrigin, AccountId> frame_support::traits::EnsureOriginWithArg<Runtim
 impl pallet_assets::Config for Runtime {
   type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
-	type CreateOrigin = EnsureRootWithArg<<Self as frame_system::Config>::RuntimeOrigin, <Self as frame_system::Config>::AccountId>;
+	type CreateOrigin = EnsureRootWithArg<Runtime>;
 	type ForceOrigin = frame_system::EnsureRoot<AccountId>;
 	type Freezer = ();
 }
@@ -384,7 +382,6 @@ impl_runtime_apis! {
 // https://github.com/paritytech/substrate/issues/10579#issuecomment-1600537558
 pub mod interface {
 	use super::Runtime;
-	use frame::deps::frame_system;
 
 	pub type Block = super::Block;
 	pub use frame::runtime::types_common::OpaqueBlock;

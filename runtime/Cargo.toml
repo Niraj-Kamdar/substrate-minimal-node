@@ -61,12 +61,14 @@ std = [
 
 	"sp-core/std",
 	"sp-runtime/std",
+	"sp-io/std",
 
 	"pallet-balances/std",
 	"pallet-sudo/std",
 	"pallet-timestamp/std",
 	"pallet-transaction-payment-rpc-runtime-api/std",
 	"pallet-transaction-payment/std",
+	"pallet-assets/std",
 
 	"pallet-minimal-template/std",
 
