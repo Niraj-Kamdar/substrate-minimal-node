@@ -4121,6 +4121,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "min-pallet-storage"
+version = "0.0.0"
+dependencies = [
+ "frame",
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-runtime",
+ "sp-std 14.0.0 (git+https://github.com/paritytech/polkadot-sdk?branch=release-polkadot-v1.9.0)",
+]
+
+[[package]]
 name = "minimal-lexical"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4168,6 +4181,7 @@ dependencies = [
  "frame",
  "frame-support",
  "frame-system",
+ "min-pallet-storage",
  "pallet-assets",
  "pallet-balances",
  "pallet-minimal-template",
